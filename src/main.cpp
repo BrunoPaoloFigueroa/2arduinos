@@ -186,10 +186,11 @@ void config_ADC(void){
     ADMUX|=(1<<REFS0);
 }
 
-float valve=0;
-char enviar=1;
+int valve=0;
+char enviar=0;
 ISR(ADC_vect){
     valve=(ADC*500.0/1023.0);
+    enviar=1;
     UCSR0B|=(1<<UDRIE0);
 
 }
@@ -198,4 +199,39 @@ void config_USART(void){
     UCSR0C|=(1<<UCSZ00)|(1<<UCSZ01);
     UCSR0B|=(1<<TXEN0)|(1<<RXEN0);
     UBRR0=103;
+}
+
+ISR(USART_UDRE_vect){
+
+    switch (enviar)
+    {
+    case 1:
+        UDR0= (valve>>8);
+        enviar=2;
+        break;
+    case 2:
+        UDR0= (valve);
+        enviar=1;
+        UCSR0B &= ~(1 << UDRIE0); 
+        _delay_ms(100);               
+        ADCSRA |= (1 << ADSC); 
+        break;
+    default:
+        break;
+    }
+
+
+}
+
+int main(void){
+
+    config_USART();
+    config_ADC();   
+    ADCSRA|=(1<<ADSC);
+    sei();
+    while(1){
+
+    }
+
+    return 0;
 }
